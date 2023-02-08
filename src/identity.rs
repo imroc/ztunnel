@@ -13,8 +13,10 @@
 // limitations under the License.
 
 pub mod caclient;
+pub mod customca;
 
 pub use caclient::*;
+pub use customca::*;
 use std::str::Utf8Error;
 pub mod manager;
 pub use manager::*;

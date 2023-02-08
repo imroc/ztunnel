@@ -130,11 +130,18 @@ pub async fn build_with_cert(
     })
 }
 
-pub async fn build(config: config::Config) -> anyhow::Result<Bound> {
+pub async fn build(config: config::Config) -> anyhow::Result<Bound, anyhow::Error> {
     if config.fake_ca {
         let cert_manager = identity::mock::MockCaClient::new(Duration::from_secs(86400));
         build_with_cert(config, cert_manager).await
-    } else {
+    } else if config.custom_signer.is_some() {
+        let cert_manager = identity::SecretManager::origin(config.clone());
+        match cert_manager {
+            Ok(cert_mgr) => build_with_cert(config, cert_mgr).await,
+            Err(_) => Err(anyhow::Error::msg("Signer is unable to sign the certificate")),
+        }
+    }
+     else {
         let cert_manager = identity::SecretManager::new(config.clone())?;
         build_with_cert(config, cert_manager).await
     }

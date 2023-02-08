@@ -19,6 +19,7 @@ use std::str::FromStr;
 use std::sync::{Arc, RwLock};
 
 use async_trait::async_trait;
+use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceColumnDefinition;
 use prometheus_client::encoding::{EncodeLabelValue, LabelValueEncoder};
 use tokio::sync::watch;
 use tokio::time::{sleep, Duration};
@@ -28,7 +29,7 @@ use tracing::{info, warn};
 use crate::identity::Error::Spiffe;
 use crate::tls;
 
-use super::Error;
+use super::{Error, CustomSigner};
 use super::{CaClient, CertificateProvider};
 
 const CERT_REFRESH_FAILURE_RETRY_DELAY: Duration = Duration::from_secs(60);
@@ -117,6 +118,17 @@ impl SecretManager<CaClient> {
         let cache: HashMap<Identity, watch::Receiver<Option<tls::Certs>>> = Default::default();
         Ok(Self {
             client: caclient,
+            cache: Arc::new(RwLock::new(cache)),
+        })
+    }
+}
+
+impl SecretManager<CustomSigner> {
+    pub fn origin(cfg: crate::config::Config) -> Result<Self, Error> {
+        let cache: HashMap<Identity, watch::Receiver<Option<tls::Certs>>> = Default::default();
+        let custom_signer = CustomSigner::new(cfg.custom_signer)?;
+        Ok(Self {
+            client: custom_signer,
             cache: Arc::new(RwLock::new(cache)),
         })
     }
